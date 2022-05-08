@@ -1,9 +1,0 @@
-{
-"startingTile":
-	{"amount": 4,
-	 "tileDict":{
-		"cities": [[0,1,2]],
-		"roads":  [[10,4]],
-		"fields": [[11,3],[9,8,7,6,5]]
-	}}
-}
