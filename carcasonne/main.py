@@ -18,6 +18,7 @@ class Deck:
 			self.tileList = json.loads(f.read())
 
 		self.deck = []
+		self.featureList = []  # list of the features this deck has, cities, rivers, fields, etc.
 		self.nTiles = 0  # total number of tiles in deck.
 		self.drawPos = 0
 		for tileName in self.tileList:
@@ -31,6 +32,10 @@ class Deck:
 				self.nTiles += 1
 				tileCount += 1
 				print(f"{self.nTiles:3d} {tileCount:3d} {tileName} loaded")
+
+			for feature in tileDict.items():
+				if feature not in self.featureList:
+					self.featureList.append(feature)
 		print("")
 
 	def shuffle(self, resetDrawPos = True, firstTile = "startingTile"):
@@ -90,24 +95,37 @@ class Deck:
 
 class Tile:
 	"""
-	carcassonne tiles are defined by their edges and center. The edges can be roads, cities, or fields. The centers can be monasteries, crossroads, or city entrances. Expansions can introduce other edges or centers. We call these parts of the tile "features"
+	carcassonne tiles are defined by their edges and center. The edges can be roads, cities, or fields. The centers can
+	be monasteries, crossroads, or city entrances. Expansions can introduce other edges or centers. We call these parts
+	of the tile "features"
 
-	You can divide the tiles edges into 12 portions (the center being a 13 portion). We represent this using a 13-element array of strings. For example the starting tile would be:
+	You can divide the tiles edges into 12 portions (the center being a 13 portion). We represent this using a
+	13-element array of strings. For example the starting tile would be:
 
 		self.sides = [city,city,city,field,road,field,field,field,road,field,None]
 
-	the last element of the list represents the center portion of the tile. None indicates that there is no special center to the tile.
+	the last element of the list represents the center portion of the tile. None indicates that there is no special
+	center to the tile. This representation allows for easy accessing for tile compatibility checks, but does not
+	encode how tile elements (roads,cities, etc) are connected. To store this information we keep a dictionary of the
+	contents of the tile. Each dictionary entry will be a 2-d nested list. Each each element will be a list of integers
+	indicating which of the edge are connected. For example the starting tile would be:
 
-	This representation allows for easy accessing for tile compatibility checks, but does not encode how tile elements (roads,cities, etc) are connected. To store this information we keep a dictionary of the contents of the tile. Each dictionary entry will be a 2-d nested list. Each each element will be a list of integers indicating which of the edge are connected. For example the starting tile would be:
+		self.tileDict = {cities: [[0,1,2]],
+						roads: [[10,4]],
+						fields: [[11,3],[9,8,7,6,5]],
+						monastery: [],
+						cityEntrance: [],
+						crossroad: []}
 
-		self.tileDict = {cities: [[0,1,2]], roads: [[10,4]], fields: [[11,3],[9,8,7,6,5]], monastery: [], cityEntrance: [], crossroad: []}
 
-		TODO: Would a list of sets be better? Should we combine the center entries (monastery,cityEntrance,etc.) into just one entry called "center" or something?
+	TODO: 	Would a list of sets be better? Should we combine the center entries (monastery,cityEntrance,etc.) into
+			just one entry called "center" or something?
 	"""
 
 	def __init__(self, tileDictInput, tileNameInput, imageDir="sprites/tileImages"):
 
-		# TODO: This allows for portions of the tiles to overwritten and for some portions of the tile to remain undefined. Undefined edges will likely also be unrepresented in
+		# TODO: This allows for portions of the tiles to overwritten and for some portions of the tile to remain
+		#  		undefined. Undefined edges will likely also be unrepresented in
 		
 		self.sides = ["None" for i in range(13)] 
 		for feature in tileDictInput:
@@ -125,6 +143,7 @@ class Tile:
 		self.tileImage = pg.image.load(os.path.join(imageDir, self.tileName) + ".png").convert()
 		self.tileImage = pg.transform.scale(self.tileImage, (imageScale, imageScale))
 		self.tileImageRect = self.tileImage.get_rect()
+		self.claimInfo = None # information about the
 
 	def tileInfo(self, style = "pretty"):
 
@@ -167,6 +186,15 @@ class Tile:
 		self.visualizeTile(style="image")
 		print(f"Tile.rotateTile: rotating tile to  {self.orient}.")
 
+	def claimTile(self, player, side):
+		feature = self.sides[side]
+
+		for instance in self.tileDict[feature]:
+			if side in instance:
+				connectedSides = instance
+				break
+
+		self.claimInfo = {"player": player, "claim":connectedSides}
 
 class Map:
 	"""
@@ -316,6 +344,9 @@ class Road:
 		self.tiles = []
 		self.score = 0
 
+	def addTile(self, tile):
+		self.tiles.append(tile)
+
 	def getScore(self):
 		return len(self.tiles)
 
@@ -329,6 +360,25 @@ class Road:
 # 		print("Creating field")
 # 		self.owner = owner
 
+class ScoreBoard:
+
+	def __init__(self, players, deck):
+
+		self.scoreDic = {player:{feature: [] for feature in deck.featureList} for player in range(players)}
+
+	def addTile(self, newTile):
+		tileNeighbors = newTile.neighbors
+		#
+		# # We need to access just the features which connect to newTile.
+		# for neighbor in tileNeighbors:
+		# 	if None:
+
+
+class Player:
+
+	def __init__(self, playerName, nMeeples = 10):
+		self.name = playerName
+		self.meeples = nMeeples
 
 class Button:
 
@@ -374,6 +424,7 @@ if __name__ == '__main__':
 	deck.shuffle()  # shuffle the draw deck
 	# print("page center: ", np.array(window.get_rect().center))
 	tileMap = Map(deck.draw(), np.array(window.get_rect().center))  # create the map or game-board where tiles are played
+	roads = []
 
 	# This is the draw cycle where tiles are repeatedly drawn and placed
 	for turn in range(deck.nTiles - 1):
@@ -404,6 +455,7 @@ if __name__ == '__main__':
 						if button.mouseOverButton(mouse):
 							newPos = button.pos
 							tileAdded = tileMap.addTile(newTile, newPos, newTile.orient)
+
 							break
 
 pg.quit()
