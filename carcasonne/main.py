@@ -5,8 +5,9 @@ import os
 import pygame as pg
 
 pageSize = (1024, 576)
-imageScale = 50  # How much to scale distances buy so that they coincide with the size of tile sprites.
+imageScale = 0.5  # How much to scale distances buy so that they coincide with the size of tile sprites.
 tileValues = {"city": 2, "road": 1, "field": 3, "monastery": 1}
+player=1
 
 
 class Deck:
@@ -141,8 +142,8 @@ class Tile:
 		self.orient = 0  # Will be an integer to indicate the orientation of the tile (either 0,1,2,3 corresponding to rotating the tile 90 degrees clockwise)
 
 		self.tileImage = pg.image.load(os.path.join(imageDir, self.tileName) + ".png").convert()
-		self.tileImage = pg.transform.scale(self.tileImage, (imageScale, imageScale))
 		self.tileImageRect = self.tileImage.get_rect()
+		self.tileImage = pg.transform.scale(self.tileImage,(self.tileImageRect[2] * imageScale, self.tileImageRect[3] * imageScale))
 		self.claimInfo = None # information about the
 
 	def tileInfo(self, style = "pretty"):
@@ -205,7 +206,7 @@ class Map:
 		self.mapElements = [startingTile]
 		startingTile.pos = mapCenter
 		startingTile.orient = 0
-		self.ordDirs = imageScale * np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
+		self.ordDirs = imageScale * startingTile.tileImageRect[-1] * np.array([[0, -1], [1, 0], [0, 1], [-1, 0]])
 		self.validPositions = self.ordDirs + mapCenter  # ordDirs, short for ordinal directions specify relative positions up, right, down, left (going clockwise) or a given location
 		print("")
 
@@ -382,11 +383,12 @@ class Player:
 
 class Button:
 
-	def __init__(self, imageDir = os.path.join(os.getcwd(), "sprites/marker.png"), pos = None):
+	def __init__(self, imageDir = os.path.join(os.getcwd(), "sprites/marker.png"), pos = np.array([0,0])):
 		print(f"Button.__init__: creating button at {pos}")
 		self.pos = pos
-		self.buttonImage = pg.image.load(imageDir).convert()
-		self.buttonImage = pg.transform.scale(self.buttonImage, (imageScale, imageScale))
+		self.buttonImage = pg.image.load(imageDir).convert_alpha()
+		self.buttonRect = self.buttonImage.get_rect()
+		self.buttonImage = pg.transform.scale(self.buttonImage, (self.buttonRect[2]*imageScale,self.buttonRect[3]*imageScale))
 		self.buttonRect = self.buttonImage.get_rect()
 		self.buttonRect.left = pos[0]  # + self.buttonRect.width/2
 		self.buttonRect.top = pos[1]  # + self.buttonRect.height/2
@@ -419,6 +421,7 @@ if __name__ == '__main__':
 	pg.init()  # What does this do? :^)
 	window = pg.display.set_mode(pageSize)  # Make a window object? What other args are there?
 	clock = pg.time.Clock()
+	clock.tick(10)  # frames to render /second TODO: Does this need to go here?
 
 	deck = Deck()   # load deck from file and initialize draw deck of tiles
 	deck.shuffle()  # shuffle the draw deck
@@ -426,11 +429,14 @@ if __name__ == '__main__':
 	tileMap = Map(deck.draw(), np.array(window.get_rect().center))  # create the map or game-board where tiles are played
 	roads = []
 
+	# initialize edge button list
+	edgeButtons = [Button(imageDir=os.path.join(os.getcwd(), "sprites/edgeMarker_squareWithDot.png")) for i in range(13)]
+
 	# This is the draw cycle where tiles are repeatedly drawn and placed
 	for turn in range(deck.nTiles - 1):
 		print(f"\nTurn {turn}")
 
-		buttons = [Button(imageDir=os.path.join(os.getcwd(), "sprites/squareMarker.png"), pos=validPosition) for validPosition in tileMap.validPositions]  # Create a button for each valid position
+		buttons = [Button(imageDir=os.path.join(os.getcwd(), "sprites/squareMarkerWithDot.png"), pos=validPosition) for validPosition in tileMap.validPositions]  # Create a button for each valid position
 		for button in buttons: button.visualizeButton()
 		tileMap.visualizeMap()
 
@@ -441,8 +447,6 @@ if __name__ == '__main__':
 
 		# print(f"Valid positions are: \n{tileMap.validPositions}")
 		while not tileAdded:
-			clock.tick(10)  # frames to render /second TODO: Does this need to go here?
-			selectedButtonPos = None
 			for ev in pg.event.get():
 				if ev.type == pg.QUIT:
 					pg.quit()
@@ -455,7 +459,35 @@ if __name__ == '__main__':
 						if button.mouseOverButton(mouse):
 							newPos = button.pos
 							tileAdded = tileMap.addTile(newTile, newPos, newTile.orient)
-
 							break
+
+		window.fill((0, 0, 0))
+		tileMap.visualizeMap()
+		edgeButtonsPos = np.array([[0,-1/3],[1/3,-1/3],[2/3,-1/3],
+								   [1,0],[1,1/3],[1,2/3],
+								   [2/3,1],[1/3,1],[0,1],
+								   [-1/3,2/3],[-1/3,1/3],[-1/3,0]])*imageScale*newTile.tileImageRect[-1]
+		edgeButtonCenterPos = (np.array([[1/2, 1/2]])*imageScale*newTile.tileImageRect[-1]) - (np.array([[1/2, 1/2]])*imageScale*edgeButtons[0].buttonRect[-1])
+		edgeButtonsPos = np.append(edgeButtonsPos,edgeButtonCenterPos,axis=0)
+		edgeButtonsPos = edgeButtonsPos + np.array(newPos)
+		for index, button in enumerate(edgeButtons):
+			button.pos = edgeButtonsPos[index]
+			button.visualizeButton()
+
+		tileClaimed = False
+		while not tileClaimed:
+			for ev in pg.event.get():
+				if ev.type == pg.QUIT:
+					pg.quit()
+				elif ev.type == pg.MOUSEBUTTONDOWN:
+					mouse = pg.mouse.get_pos()
+					for index, button in enumerate(edgeButtons):
+						if button.mouseOverButton(mouse):
+							side = index
+							tileClaimed = tileMap.claimTile(player, side)
+							print(tileClaimed)
+							break
+
+
 
 pg.quit()
