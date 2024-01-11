@@ -41,8 +41,8 @@ class Deck:
             random.shuffle(self.deck)
         else:
             if firstTile in self.tileList:
-                print(f"Deck.shuffle: Shuffling deck with {firstTile} as first \
-                        tile.")
+                print(f"Deck.shuffle: Shuffling deck with {firstTile} as first"
+                       " tile.")
                 self.deck = []
                 for tileName in self.tileList:
                     if firstTile == tileName:
@@ -58,8 +58,8 @@ class Deck:
                 self.deck.insert(0, Tile(self.tileList[firstTile]['tileDict'], 
                                          firstTile))
             else:
-                print(f"Deck.shuffle: Unable to find {firstTile}. \
-                        Shuffling normally.")
+                print(f"Deck.shuffle: Unable to find {firstTile}. "
+                        "Shuffling normally.")
                 random.shuffle(self.deck)
 
         if resetDrawPos:
@@ -227,13 +227,21 @@ class Tile:
         self.visualizeTile(style="image")
         print(f"Tile.rotateTile: rotating tile to  {self.orient}.")
 
+
+class City:
+
+    def __init__(self):
+        self.tiles = []
+        self.claims = []
+
+
 class Map:
     """
     The map is a collection of tiles
     """
     def __init__(self, startingTile, mapCenter=np.array([0, 0])):
-        print(f"Map.__init__: building Map with {startingTile.tileName} as \
-                first tile.")
+        print(f"Map.__init__: building Map with {startingTile.tileName} as"
+                "first tile.")
         self.mapElements = [startingTile]
         startingTile.pos = mapCenter
         startingTile.orient = 0
@@ -317,12 +325,12 @@ class Map:
         #print("")
 
         if newTileFeatures == oldTileFeatures:
-            print(f"Map.validOrientationSingle: {ordDir} is valid direction \
-                    given orientation.")
+            print(f"Map.validOrientationSingle: {ordDir} is valid direction "
+                   "given orientation.")
             return True
         else:
-            print(f"Map.validOrientationSingle: {ordDir} is not a valid \
-                    direction given orientation.")
+            print(f"Map.validOrientationSingle: {ordDir} is not a valid "
+                   "direction given orientation.")
             return False
 
     def validOrientation(self, newTile, neighbors):
@@ -332,15 +340,15 @@ class Map:
             if neighbors[i] is not None:
                 if not self.validOrientationSingle(newTile, neighbors[i], 
                                                    self.ordDirs[i]):
-                    print(f"Map.validOrientation: {newTile.orient} is not a \
-                            valid orientation.")
+                    print(f"Map.validOrientation: {newTile.orient} is not a "
+                           "valid orientation.")
                     return False
         print(f"Map.validOrientation: {newTile.orient} is a valid orientation.")
         return True
 
     def updateNeighbors(self, newTile, neighborsInput):
-        print(f"Updating neighbor information for {newTile.tileName} and its \
-                neighbors.")
+        print(f"Updating neighbor information for {newTile.tileName} and its "
+               "neighbors.")
         newTile.neighbors = neighborsInput
         for i in range(len(neighborsInput)):
             j = i + 2
@@ -350,8 +358,8 @@ class Map:
                 neighborsInput[i].neighbors[j] = newTile
 
     def addTile(self, newTile, pos, orient):
-        print(f"Map.addTile: Trying to add {newTile.tileName} at {pos} with \
-                orient {orient}.")
+        print(f"Map.addTile: Trying to add {newTile.tileName} at {pos} with "
+               "orient {orient}.")
         newTile.pos = pos
         newTile.orient = orient
         if self.validPosition(pos):
@@ -364,8 +372,8 @@ class Map:
                 self.getValidPositions() 
                 return True
             else:
-                print(f"Map.addTile: Could not add {newTile.tileName} to the \
-                        map.")
+                print(f"Map.addTile: Could not add {newTile.tileName} to the "
+                       "map.")
                 newTile.pos = (0,0)
                 return False
         else:
@@ -402,8 +410,8 @@ class Button:
         yMin = top
         yMax = top + height
         if xMin <= mouseX <= xMax and yMin <= mouseY <= yMax:
-            print(f"Button.{self.mouseOverButton.__name__}: Button at \
-                    {np.array(mouse)} selected.")
+            print(f"Button.{self.mouseOverButton.__name__}: Button at "
+                  f"{np.array(mouse)} selected.")
             return True
         else:
             #print(f"Button.{self.mouseOverButton.__name__}: False")
@@ -416,6 +424,14 @@ class Button:
         else:
             window.blit(self.buttonImage, tuple(self.pos))
             pg.display.update()
+
+class Player:
+
+    def __init__(self, name=None):
+        self.name = name
+        self.meeple = 8
+        self.score = 0
+
 
 if __name__ == '__main__':
 
@@ -430,9 +446,25 @@ if __name__ == '__main__':
     # create the map or gameboard where tiles are played
     tileMap = Map(deck.draw(),np.array(window.get_rect().center)) 
 
+    players = [Player(name=f"player {i}") for i in range(2)]
+    player_turn = 0
+
+    features = {"cities": [], "roads": [], "monastaries": []}
+
     # This is the draw cycle where tiles are repeatedly drawn and placed
     for i in range(deck.nTiles -1):
         print(f"\nTurn {i}")
+
+
+        player = players[player_turn]
+        if player_turn > len(players):
+            player_turn += 1
+        else:
+            player_turn
+
+        print(f"{player.name}'s turn!")
+
+
 
         # Create a button for each valid position
         buttons = [Button(imageDir=os.path.join(os.getcwd(), 
@@ -464,6 +496,8 @@ if __name__ == '__main__':
                             newPos = button.pos
                             tileAdded = tileMap.addTile(newTile, newPos, 
                                                         newTile.orient)
+
+
                             break
 
 
