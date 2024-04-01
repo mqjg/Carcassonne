@@ -3,7 +3,7 @@ import random
 import numpy as np
 import os
 import pygame as pg
-
+# this is a test
 pageSize = (1024, 576)
 # How much to scale distances buy so that they coincide with the size of tile 
 # sprites.
